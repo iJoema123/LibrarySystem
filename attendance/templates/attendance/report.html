@@ -1,0 +1,91 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Reports - Library System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 style="margin-bottom: 2rem;">📋 Attendance Reports</h1>
+    
+    <!-- Filters -->
+    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+        <h3 style="margin-bottom: 1rem;">Filter Reports</h3>
+        <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div>
+                <label for="date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Date:</label>
+                <input type="date" name="date" id="date" value="{{ selected_date }}" 
+                       style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div>
+                <label for="stage" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Education Stage:</label>
+                <select name="stage" id="stage" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">All Stages</option>
+                    {% for stage_value, stage_label in education_stages %}
+                    <option value="{{ stage_value }}" {% if selected_stage == stage_value %}selected{% endif %}>
+                        {{ stage_label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="search" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Search:</label>
+                <input type="text" name="search" id="search" value="{{ search_query }}" 
+                       placeholder="Name or Student ID" 
+                       style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div style="display: flex; align-items: end; gap: 0.5rem;">
+                <button type="submit" class="btn">Apply Filters</button>
+                <a href="{% url 'attendance_report' %}" class="btn" style="background: #6c757d;">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <h2>Attendance Records</h2>
+    {% if attendance_logs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Education Stage</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in attendance_logs %}
+                <tr>
+                    <td>{{ log.student.school_id_number }}</td>
+                    <td>{{ log.student.name }}</td>
+                    <td>{{ log.student.get_education_stage_display }}</td>
+                    <td>{{ log.check_in|date:"d M, Y g:i A" }}</td>
+                    <td>
+                        {% if log.check_out %}
+                            {{ log.check_out|date:"d M, Y g:i A" }}
+                        {% else %}
+                            <span style="color: #28a745;">Still in library</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.check_out %}
+                            {{ log.check_out|timeuntil:log.check_in }}
+                        {% else %}
+                            <span style="color: #ffc107;">In progress</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 1rem; text-align: center;">
+            <p>Showing {{ attendance_logs.count }} record(s)</p>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem; color: #666;">
+            <p>No attendance records found for the selected filters.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

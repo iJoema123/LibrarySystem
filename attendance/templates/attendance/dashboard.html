@@ -1,0 +1,81 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Dashboard - Library System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 style="margin-bottom: 2rem;">📊 Library Dashboard</h1>
+    
+    <!-- Statistics Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="text-align: center; padding: 1.5rem; background: #e8f4fd; border-radius: 10px;">
+            <h3>Total Students</h3>
+            <div style="font-size: 2rem; font-weight: bold; color: #667eea;">{{ total_students }}</div>
+        </div>
+        <div style="text-align: center; padding: 1.5rem; background: #e8f4fd; border-radius: 10px;">
+            <h3>Today's Visits</h3>
+            <div style="font-size: 2rem; font-weight: bold; color: #28a745;">{{ total_visits_today }}</div>
+        </div>
+        <div style="text-align: center; padding: 1.5rem; background: #e8f4fd; border-radius: 10px;">
+            <h3>Current Visitors</h3>
+            <div style="font-size: 2rem; font-weight: bold; color: #ffc107;">{{ current_visitors.count }}</div>
+        </div>
+    </div>
+
+    <!-- Current Visitors -->
+    <div style="margin-bottom: 2rem;">
+        <h2>Currently in Library</h2>
+        {% if current_visitors %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Education Stage</th>
+                        <th>Check-in Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in current_visitors %}
+                    <tr>
+                        <td>{{ log.student.school_id_number }}</td>
+                        <td>{{ log.student.name }}</td>
+                        <td>{{ log.student.get_education_stage_display }}</td>
+                        <td>{{ log.check_in|time }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="text-align: center; color: #666; padding: 2rem;">No students currently in the library</p>
+        {% endif %}
+    </div>
+
+    <!-- Education Stage Statistics -->
+    <div style="margin-bottom: 2rem;">
+        <h2>Attendance by Education Stage</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Education Stage</th>
+                    <th>Total Visits</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stat in stage_stats %}
+                <tr>
+                    <td>{{ stat.education_stage }}</td>
+                    <td>{{ stat.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{% url 'scan_qr' %}" class="btn">Go to Scanner</a>
+        <a href="{% url 'attendance_report' %}" class="btn btn-success">View Detailed Reports</a>
+    </div>
+</div>
+{% endblock %}

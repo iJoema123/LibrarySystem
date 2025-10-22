@@ -1,0 +1,51 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}System Status - Library System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 style="margin-bottom: 2rem;">🖥️ System Status</h1>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div style="text-align: center; padding: 1.5rem; background: #e8f4fd; border-radius: 10px;">
+            <h3>Database Status</h3>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">✅ Operational</div>
+        </div>
+        <div style="text-align: center; padding: 1.5rem; background: #e8f4fd; border-radius: 10px;">
+            <h3>Server Time</h3>
+            <div style="font-size: 1.2rem; font-weight: bold; color: #667eea;">{{ server_time }}</div>
+            <div style="font-size: 0.9rem; color: #666;">Timezone: {{ server_time.tzinfo }}</div>
+        </div>
+    </div>
+
+    <!-- System Statistics -->
+    <div style="margin-bottom: 2rem;">
+        <h2>System Statistics</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                <h4>Total Students</h4>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">{{ total_students }}</div>
+            </div>
+            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                <h4>Total Attendance Records</h4>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">{{ total_logs }}</div>
+            </div>
+            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                <h4>Today's Records</h4>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #ffc107;">{{ logs_today }}</div>
+            </div>
+            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                <h4>Current Visitors</h4>
+                <div style="font-size: 1.5rem; font-weight: bold; color: #17a2b8;">{{ current_visitors }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{% url 'dashboard' %}" class="btn">View Dashboard</a>
+        <a href="{% url 'export_attendance' %}" class="btn btn-success">Export Data</a>
+        <a href="/admin/" class="btn" style="background: #6c757d;">Admin Panel</a>
+    </div>
+</div>
+{% endblock %}
