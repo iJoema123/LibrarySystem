@@ -12,4 +12,9 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('qr-codes/', views.student_qr_codes, name='student_qr_codes'),
+    path('mobile-scanner/', views.mobile_scanner, name='mobile_scanner'),
+    path('api/scan/', views.api_scan, name='api_scan'),
+    path('scanner-test/', views.scanner_test, name='scanner_test'),
+    path('api/scan-with-details/', views.api_scan_with_details, name='api_scan_with_details'),
+    path('api/statistics/', views.statistics_api, name='statistics_api'),
 ]

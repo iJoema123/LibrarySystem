@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile QR Scanner - Library System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .header {
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        #reader {
+            width: 100%;
+            margin: 0 auto 2rem auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #status {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 10px;
+            font-weight: bold;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .success { background: rgba(212, 237, 218, 0.9); color: #155724; }
+        .error { background: rgba(248, 215, 218, 0.9); color: #721c24; }
+        .info { background: rgba(209, 236, 241, 0.9); color: #0c5460; }
+        .warning { background: rgba(255, 243, 205, 0.9); color: #856404; }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #28a745;
+            color: white;
+            font-size: 1.2rem;
+            padding: 15px 30px;
+        }
+        .debug {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Library QR Scanner</h1>
+            <p>Scan student QR codes to check in/out</p>
+        </div>
+        
+        <div id="status" class="info">
+            Click "Start Camera" to begin scanning
+        </div>
+        
+        <div id="reader"></div>
+        
+        <div>
+            <button id="startCamera" class="btn btn-primary">Start Camera</button>
+            <button onclick="location.reload()" class="btn">Restart</button>
+            <a href="/attendance/" class="btn">Main Site</a>
+        </div>
+        
+        <div id="debug" class="debug" style="display: none;">
+            <strong>Debug Info:</strong>
+            <div id="debugContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let scanner = null;
+        let isScanning = false;
+        const statusDiv = document.getElementById('status');
+        const startButton = document.getElementById('startCamera');
+        const debugDiv = document.getElementById('debug');
+        const debugContent = document.getElementById('debugContent');
+
+        function showStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            console.log(`Status: ${message}`);
+        }
+
+        function debugLog(message) {
+            debugContent.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+            debugDiv.style.display = 'block';
+            console.log(`Debug: ${message}`);
+        }
+
+        // Test basic camera access
+        async function testCameraAccess() {
+            debugLog('Testing camera access...');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showStatus('❌ Camera API not supported in this browser', 'error');
+                debugLog('Camera API not available');
+                return false;
+            }
+
+            try {
+                debugLog('Requesting camera permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment' // Prefer rear camera
+                    } 
+                });
+                
+                // Stop the test stream
+                stream.getTracks().forEach(track => track.stop());
+                debugLog('Camera access granted!');
+                return true;
+                
+            } catch (error) {
+                debugLog(`Camera error: ${error.name} - ${error.message}`);
+                
+                if (error.name === 'NotAllowedError') {
+                    showStatus('❌ Camera permission denied. Please allow camera access in browser settings.', 'error');
+                } else if (error.name === 'NotFoundError') {
+                    showStatus('❌ No camera found on this device.', 'error');
+                } else if (error.name === 'NotSupportedError') {
+                    showStatus('❌ Camera not supported in this browser.', 'error');
+                } else {
+                    showStatus(`❌ Camera error: ${error.message}`, 'error');
+                }
+                return false;
+            }
+        }
+
+        // Start QR scanner
+        async function startScanner() {
+            if (isScanning) return;
+            
+            showStatus('🔄 Starting camera...', 'info');
+            startButton.disabled = true;
+            
+            const hasCamera = await testCameraAccess();
+            if (!hasCamera) {
+                startButton.disabled = false;
+                return;
+            }
+
+            try {
+                debugLog('Initializing QR scanner...');
+                
+                // Clear previous scanner if exists
+                if (scanner) {
+                    await scanner.clear();
+                }
+
+                // Create new scanner
+                scanner = new Html5QrcodeScanner(
+                    "reader",
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_QR_CODE]
+                    },
+                    false
+                );
+
+                scanner.render(onScanSuccess, onScanFailure);
+                isScanning = true;
+                showStatus('✅ Camera ready! Point at QR code to scan.', 'success');
+                debugLog('QR scanner started successfully');
+                
+            } catch (error) {
+                showStatus(`❌ Failed to start scanner: ${error.message}`, 'error');
+                debugLog(`Scanner error: ${error}`);
+                startButton.disabled = false;
+            }
+        }
+
+        async function onScanSuccess(decodedText, decodedResult) {
+            if (isScanning) return;
+            isScanning = true;
+            
+            showStatus('🔄 Processing scan...', 'info');
+            debugLog(`Scanned: ${decodedText}`);
+            
+            try {
+                // Stop scanner temporarily
+                if (scanner) {
+                    await scanner.clear();
+                }
+
+                // Send to server
+                const response = await fetch('/attendance/api/scan/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: 'school_id_number=' + encodeURIComponent(decodedText)
+                });
+
+                const result = await response.text();
+                debugLog(`Server response: ${result} (Status: ${response.status})`);
+
+                if (response.ok) {
+                    if (result === 'CHECKED_IN') {
+                        showStatus('✅ Checked IN successfully!', 'success');
+                    } else if (result === 'CHECKED_OUT') {
+                        showStatus('✅ Checked OUT successfully!', 'success');
+                    } else {
+                        showStatus(`❌ Server error: ${result}`, 'error');
+                    }
+                } else {
+                    if (result === 'STUDENT_NOT_FOUND') {
+                        showStatus(`❌ Student not found: ${decodedText}`, 'error');
+                    } else {
+                        showStatus(`❌ Error: ${result}`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                showStatus('❌ Network error. Please check connection.', 'error');
+                debugLog(`Network error: ${error}`);
+            }
+
+            // Restart scanner after delay
+            setTimeout(() => {
+                isScanning = false;
+                startScanner();
+            }, 3000);
+        }
+
+        function onScanFailure(error) {
+            // Don't show errors for normal scanning failures
+            debugLog(`Scan failed: ${error}`);
+        }
+
+        // CSRF token helper
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', startScanner);
+        
+        // Auto-start on page load (with delay)
+        setTimeout(() => {
+            debugLog('Page loaded, auto-starting camera test...');
+            testCameraAccess();
+        }, 1000);
+
+        // Show debug info on long press
+        let debugTimer;
+        document.addEventListener('touchstart', (e) => {
+            debugTimer = setTimeout(() => {
+                debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none';
+            }, 2000);
+        });
+        
+        document.addEventListener('touchend', () => {
+            clearTimeout(debugTimer);
+        });
+    </script>
+</body>
+</html>

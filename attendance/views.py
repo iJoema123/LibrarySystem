@@ -13,6 +13,9 @@ from .models import Student, AttendanceLog, UserProfile
 import qrcode
 import base64
 from io import BytesIO
+from django.http import JsonResponse
+import json
+import datetime
 
 
 
@@ -245,3 +248,129 @@ def student_qr_codes(request):
         'students': students,
     }
     return render(request, 'attendance/student_qr_codes.html', context)
+
+
+
+
+def mobile_scanner(request):
+    """Mobile-friendly QR scanner page"""
+    return render(request, 'attendance/mobile_scanner.html')
+
+def api_scan(request):
+    """API endpoint for mobile scanning"""
+    if request.method == "POST":
+        school_id = request.POST.get("school_id_number", "").strip()
+        
+        if school_id:
+            try:
+                student = Student.objects.get(school_id_number=school_id)
+                log = AttendanceLog.objects.filter(student=student, check_out__isnull=True).first()
+
+                if log:
+                    # Check out
+                    log.check_out = timezone.now()
+                    log.save()
+                    return HttpResponse("CHECKED_OUT")
+                else:
+                    # Check in
+                    AttendanceLog.objects.create(student=student)
+                    return HttpResponse("CHECKED_IN")
+                    
+            except Student.DoesNotExist:
+                return HttpResponse("STUDENT_NOT_FOUND", status=400)
+    
+    return HttpResponse("ERROR", status=400)
+
+
+
+@login_required
+@librarian_required
+def scanner_test(request):
+    """Test page for QR scanner functionality"""
+    test_students = Student.objects.all()[:3]
+    
+    for student in test_students:
+        student.qr_code = generate_qr_code(student.school_id_number)
+    
+    context = {
+        'test_students': test_students,
+    }
+    return render(request, 'attendance/scanner_test.html', context)
+
+
+
+
+
+
+def api_scan_with_details(request):
+    """API endpoint for scanning with student details"""
+    if request.method == "POST":
+        school_id = request.POST.get("school_id_number", "").strip()
+        
+        if school_id:
+            try:
+                student = Student.objects.get(school_id_number=school_id)
+                log = AttendanceLog.objects.filter(student=student, check_out__isnull=True).first()
+
+                action = 'check_out' if log else 'check_in'
+                
+                if log:
+                    # Check out
+                    log.check_out = timezone.now()
+                    log.save()
+                else:
+                    # Check in
+                    AttendanceLog.objects.create(student=student)
+                
+                # Get updated statistics
+                today = timezone.now().date()
+                today_count = AttendanceLog.objects.filter(check_in__date=today).count()
+                current_in_library = AttendanceLog.objects.filter(check_out__isnull=True).count()
+                
+                return JsonResponse({
+                    'success': True,
+                    'action': action,
+                    'student': {
+                        'name': student.name,
+                        'school_id': student.school_id_number,
+                        'education_stage': student.get_education_stage_display(),
+                    },
+                    'today_count': today_count,
+                    'current_in_library': current_in_library
+                })
+                    
+            except Student.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Student with ID {school_id} not found.'
+                }, status=400)
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request'
+    }, status=400)
+
+
+
+
+def statistics_api(request):
+    """API endpoint to get current statistics"""
+    if request.method == 'GET':
+        # Get today's date
+        today = timezone.now().date()
+        
+        # Count today's visitors (unique students who visited today)
+        today_visitors = AttendanceLog.objects.filter(
+            check_in__date=today
+        ).values('student').distinct().count()
+        
+        # Count currently in library (checked in but not checked out)
+        current_in_library = AttendanceLog.objects.filter(
+            check_in__date=today,
+            check_out__isnull=True
+        ).count()
+        
+        return JsonResponse({
+            'today_count': today_visitors,
+            'current_in_library': current_in_library
+        })

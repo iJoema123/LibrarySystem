@@ -1,0 +1,68 @@
+{% extends 'attendance/base.html' %}
+
+{% block title %}Scanner Test - Library System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 style="text-align: center; margin-bottom: 2rem;">🧪 QR Scanner Test</h1>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <!-- Test Scanner -->
+        <div>
+            <h3>Test Your QR Scanner</h3>
+            <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px;">
+                <form method="post" id="test-form">
+                    {% csrf_token %}
+                    <div style="margin-bottom: 1.5rem;">
+                        <input type="text" 
+                               name="school_id_number" 
+                               id="test-input"
+                               placeholder="Scan QR code here to test..."
+                               style="width: 100%; padding: 1rem; font-size: 1.1rem; border: 2px solid #007bff; border-radius: 8px; text-align: center;"
+                               autofocus required>
+                    </div>
+                    <div id="test-result" style="min-height: 50px; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <!-- Results will appear here -->
+                    </div>
+                    <button type="button" onclick="testScanner()" class="btn">Test Scanner</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Test QR Codes -->
+        <div>
+            <h3>Test QR Codes</h3>
+            <p>Scan these to test your device:</p>
+            {% for student in test_students %}
+            <div style="text-align: center; margin: 1rem 0; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+                <div style="font-weight: bold;">{{ student.name }}</div>
+                <div style="color: #666;">ID: {{ student.school_id_number }}</div>
+                <img src="data:image/png;base64,{{ student.qr_code }}" 
+                     style="width: 120px; height: 120px; margin: 10px auto; display: block;">
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+function testScanner() {
+    const input = document.getElementById('test-input');
+    const result = document.getElementById('test-result');
+    
+    if (input.value) {
+        result.innerHTML = `<div style="color: #28a745;">✅ Scanner working! Detected: ${input.value}</div>`;
+        input.value = ''; // Clear for next test
+    } else {
+        result.innerHTML = `<div style="color: #dc3545;">❌ No input detected. Scan a QR code.</div>`;
+    }
+}
+
+// Auto-test when scanner inputs data
+document.getElementById('test-input').addEventListener('input', function() {
+    if (this.value.length > 0) {
+        setTimeout(testScanner, 100);
+    }
+});
+</script>
+{% endblock %}
